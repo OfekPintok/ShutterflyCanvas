@@ -7,6 +7,6 @@ import kotlinx.collections.immutable.persistentListOf
 
 data class EditorUiState(
     val isLoading: Boolean = false,
-    val galleryPhotos: PersistentList<Photo> = persistentListOf(),
+    val carouselPhotos: PersistentList<Photo> = persistentListOf(),
     val canvasPhotos: PersistentList<CanvasPhoto> = persistentListOf()
 )

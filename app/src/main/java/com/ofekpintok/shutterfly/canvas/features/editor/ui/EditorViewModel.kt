@@ -37,7 +37,7 @@ class EditorViewModel(
     ) { galleryPhotosState, canvasPhotos ->
         EditorUiState(
             isLoading = galleryPhotosState.isLoading,
-            galleryPhotos = galleryPhotosState.photos.toPersistentList(),
+            carouselPhotos = galleryPhotosState.photos.toPersistentList(),
             canvasPhotos = canvasPhotos.toPersistentList()
         )
     }.stateIn(

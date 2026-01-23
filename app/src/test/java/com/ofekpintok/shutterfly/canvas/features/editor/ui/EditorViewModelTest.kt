@@ -68,7 +68,7 @@ class EditorViewModelTest {
 
         // Then
         assertFalse(sut.uiState.value.isLoading)
-        assertEquals(photos, sut.uiState.value.galleryPhotos)
+        assertEquals(photos, sut.uiState.value.carouselPhotos)
     }
 
     @Test

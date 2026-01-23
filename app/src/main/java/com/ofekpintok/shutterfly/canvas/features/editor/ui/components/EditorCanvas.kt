@@ -2,10 +2,13 @@ package com.ofekpintok.shutterfly.canvas.features.editor.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.ofekpintok.shutterfly.canvas.features.editor.domain.models.CanvasPhoto
+import kotlinx.collections.immutable.PersistentList
 
 @Composable
 fun EditorCanvas(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    canvasPhotos: PersistentList<CanvasPhoto>
 ) {
 
 }
