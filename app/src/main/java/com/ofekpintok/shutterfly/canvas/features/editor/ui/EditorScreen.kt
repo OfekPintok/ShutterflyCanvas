@@ -3,8 +3,10 @@ package com.ofekpintok.shutterfly.canvas.features.editor.ui
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -56,8 +58,9 @@ private fun EditorScreen(
                     modifier = Modifier.weight(1f),
                     canvasPhotos = uiState.canvasPhotos
                 )
+                HorizontalDivider()
                 PhotoCarousel(
-                    modifier = Modifier.height(height = carouselHeight),
+                    modifier = Modifier.height(height = carouselHeight).fillMaxWidth(),
                     isLoading = uiState.isLoading,
                     photos = uiState.carouselPhotos
                 )
