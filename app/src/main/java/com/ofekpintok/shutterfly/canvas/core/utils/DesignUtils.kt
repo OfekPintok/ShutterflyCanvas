@@ -6,29 +6,32 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 
 @Composable
 fun rememberShimmerBrush(): Brush {
+    val baseColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+    val shineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+
     val transition = rememberInfiniteTransition(label = "shimmer")
 
     val translateAnimation = transition.animateFloat(
         initialValue = 0f,
-        targetValue = 2000f,
+        targetValue = 700f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearEasing),
+            animation = tween(durationMillis = 1000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmer_translate"
     )
 
     val shimmerColors = listOf(
-        Color.LightGray.copy(alpha = 0.6f),
-        Color.LightGray.copy(alpha = 0.2f),
-        Color.LightGray.copy(alpha = 0.6f),
+        baseColor,
+        shineColor,
+        baseColor,
     )
 
     return Brush.linearGradient(
