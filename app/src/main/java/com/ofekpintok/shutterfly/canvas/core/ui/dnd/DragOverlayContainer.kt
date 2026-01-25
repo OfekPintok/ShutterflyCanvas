@@ -9,18 +9,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 
 private const val TAG = "DragOverlayContainer"
 
 interface DragScope<T> {
-    fun onDragStart(data: T, offset: Offset)
+    val dragState: DragState<T>
+    fun onDragStart(data: T, offset: Offset, size: Size)
     fun onDrag(offset: Offset)
     fun onDragEnd()
 }
 
 @Composable
 fun <T> DragOverlayContainer(
-    onDrop: (T, Offset) -> Unit,
+    onDrop: (T, Offset, Size) -> Unit,
     dragOverlayContent: @Composable (T, Offset) -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable DragScope<T>.() -> Unit
@@ -29,9 +31,12 @@ fun <T> DragOverlayContainer(
 
     val dragScope = remember {
         object : DragScope<T> {
-            override fun onDragStart(data: T, offset: Offset) {
+            override val dragState: DragState<T>
+                get() = dragState
+
+            override fun onDragStart(data: T, offset: Offset, size: Size) {
                 Log.d(TAG, "onDragStart: data=$data, offset=$offset")
-                dragState = DragState(isDragging = true, data = data, currentPosition = offset)
+                dragState = DragState(isDragging = true, data = data, currentPosition = offset, size = size)
             }
 
             override fun onDrag(offset: Offset) {
@@ -42,7 +47,7 @@ fun <T> DragOverlayContainer(
 
             override fun onDragEnd() {
                 Log.d(TAG, "onDragEnd: data=${dragState.data}, finalPosition=${dragState.currentPosition}")
-                dragState.data?.let { onDrop(it, dragState.currentPosition) }
+                dragState.data?.let { onDrop(it, dragState.currentPosition, dragState.size) }
                 dragState = DragState()
             }
         }
@@ -56,9 +61,3 @@ fun <T> DragOverlayContainer(
         dragState.data?.let { dragOverlayContent(it, dragState.currentPosition) }
     }
 }
-
-private data class DragState<T>(
-    val isDragging: Boolean = false,
-    val data: T? = null,
-    val currentPosition: Offset = Offset.Zero
-)

@@ -1,5 +1,6 @@
 package com.ofekpintok.shutterfly.canvas.features.editor.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,22 +21,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ofekpintok.shutterfly.canvas.core.ui.dnd.DragOverlayContainer
-import com.ofekpintok.shutterfly.canvas.core.utils.clipBelow
+import com.ofekpintok.shutterfly.canvas.core.ui.dnd.utils.rememberDragIntersection
 import com.ofekpintok.shutterfly.canvas.core.utils.clipBottom
 import com.ofekpintok.shutterfly.canvas.features.editor.EditorDragItem
 import com.ofekpintok.shutterfly.canvas.features.editor.EditorEvent
 import com.ofekpintok.shutterfly.canvas.features.editor.EditorUiState
 import com.ofekpintok.shutterfly.canvas.features.editor.domain.models.Photo
 import com.ofekpintok.shutterfly.canvas.features.editor.ui.canvas.EditorCanvas
-import com.ofekpintok.shutterfly.canvas.features.editor.ui.carousel.PhotoCarousel
 import com.ofekpintok.shutterfly.canvas.features.editor.ui.components.GhostCanvasItem
 import com.ofekpintok.shutterfly.canvas.features.editor.ui.components.GhostPhotoItem
 import com.ofekpintok.shutterfly.canvas.features.editor.ui.config.EditorConfig.BaseCanvasPhotoWidth
@@ -76,16 +78,28 @@ private fun EditorContent(
     uiState: EditorUiState
 ) {
     var canvasBounds by remember { mutableStateOf(Rect.Zero) }
+    var trashBounds by remember { mutableStateOf(Rect.Zero) }
+
+    val haptic = LocalHapticFeedback.current
 
     DragOverlayContainer(
-        onDrop = { dragItem, globalDropOffset ->
+        onDrop = { dragItem, globalDropOffset, size->
+            val droppedItemRect = Rect(offset = globalDropOffset, size = size)
+
             when {
-                dragItem is EditorDragItem.FromCarousel && canvasBounds.contains(globalDropOffset) -> onEditorEvent(
-                    EditorEvent.AddPhotoToCanvas(
-                        photo = dragItem.photo,
-                        position = globalDropOffset - canvasBounds.topLeft
+                dragItem is EditorDragItem.FromCarousel && canvasBounds.contains(globalDropOffset) -> {
+                    onEditorEvent(
+                        EditorEvent.AddPhotoToCanvas(
+                            photo = dragItem.photo,
+                            position = globalDropOffset - canvasBounds.topLeft
+                        )
                     )
-                )
+                }
+
+                dragItem is EditorDragItem.FromCanvas && trashBounds.overlaps(droppedItemRect) -> {
+                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                    onEditorEvent(EditorEvent.RemovePhotoFromCanvas(dragItem.canvasPhoto.id))
+                }
 
                 dragItem is EditorDragItem.FromCanvas -> onEditorEvent(
                     EditorEvent.MoveCanvasPhoto(
@@ -103,14 +117,20 @@ private fun EditorContent(
                 is EditorDragItem.FromCanvas -> GhostCanvasItem(
                     modifier = Modifier
                         .width(BaseCanvasPhotoWidth)
-                        .wrapContentHeight()
-                        .clipBelow(limitY = canvasBounds.bottom),
+                        .wrapContentHeight(),
                     photo = dragItem.canvasPhoto,
                     offset = offset
                 )
             }
         },
     ) {
+        val isHoveringTrash = rememberDragIntersection(
+            isDragging = dragState.isDragging,
+            dragPosition = dragState.currentPosition,
+            dragItemSize = dragState.size,
+            targetBounds = trashBounds
+        )
+
         BoxWithConstraints(
             modifier = Modifier
                 .padding(padding)
@@ -119,26 +139,38 @@ private fun EditorContent(
             val carouselHeight = calculateCarouselHeight(maxHeight)
 
             Column(modifier = Modifier.fillMaxSize()) {
-                EditorCanvas(
+                Box(
                     modifier = Modifier
                         .weight(1f)
+                        .fillMaxWidth()
                         .clipBottom()
-                        .onGloballyPositioned { canvasBounds = it.boundsInRoot() },
-                    canvasPhotos = uiState.canvasPhotos,
-                    onDragStart = { item, offset -> onDragStart(item, offset) },
-                    onDrag = { onDrag(it) },
-                    onDragEnd = { onDragEnd() }
-                )
+                ) {
+                    EditorCanvas(
+                        modifier = Modifier.onGloballyPositioned {
+                            canvasBounds = it.boundsInRoot()
+                        },
+                        canvasPhotos = uiState.canvasPhotos,
+                        onDragStart = { item, offset, size -> onDragStart(item, offset, size) },
+                        onDrag = { onDrag(it) },
+                        onDragEnd = { onDragEnd() }
+                    )
+                }
 
                 HorizontalDivider()
 
-                PhotoCarousel(
+                EditorBottomBar(
                     modifier = Modifier
-                        .height(height = carouselHeight)
+                        .height(carouselHeight)
                         .fillMaxWidth(),
+                    carouselPhotos = uiState.carouselPhotos,
                     isLoading = uiState.isLoading,
-                    photos = uiState.carouselPhotos,
-                    onDragStart = { item, offset -> onDragStart(item, offset) },
+                    dragState = dragState,
+                    isHoveringTrash = isHoveringTrash,
+                    onTrashBoundsChange = { trashBounds = it },
+                    onDragStart = { item, offset, size ->
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDragStart(item, offset, size)
+                    },
                     onDrag = { onDrag(it) },
                     onDragEnd = { onDragEnd() }
                 )

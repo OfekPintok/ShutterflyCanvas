@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,7 +46,7 @@ import kotlin.math.roundToInt
 fun EditorCanvas(
     modifier: Modifier = Modifier,
     canvasPhotos: PersistentList<CanvasPhoto>,
-    onDragStart: (EditorDragItem, Offset) -> Unit,
+    onDragStart: (EditorDragItem, Offset, Size) -> Unit,
     onDrag: (Offset) -> Unit,
     onDragEnd: () -> Unit
 ) {
@@ -92,7 +93,7 @@ fun EditorCanvas(
 @Composable
 private fun CanvasContent(
     canvasPhotos: PersistentList<CanvasPhoto>,
-    onDragStart: (EditorDragItem, Offset) -> Unit,
+    onDragStart: (EditorDragItem, Offset, Size) -> Unit,
     onDrag: (Offset) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier
@@ -115,10 +116,11 @@ private fun CanvasContent(
                         }
                         .width(BaseCanvasPhotoWidth)
                         .wrapContentHeight(),
-                    onDragStart = { offset ->
+                    onDragStart = { offset, size ->
                         onDragStart(
                             EditorDragItem.FromCanvas(photo),
-                            offset
+                            offset,
+                            size
                         )
                     },
                     onDrag = onDrag,
@@ -175,7 +177,7 @@ private fun EmptyEditorCanvasPreview() {
     ShutterflyCanvasTheme {
         EditorCanvas(
             canvasPhotos = persistentListOf(),
-            onDragStart = { _, _ -> },
+            onDragStart = { _, _, _ -> },
             onDrag = { },
             onDragEnd = { }
         )
@@ -210,7 +212,7 @@ private fun PopulatedEditorCanvasPreview() {
                     attributes = CanvasPhotoAttributes(x = 150f, y = 500f, rotation = 0f)
                 )
             ),
-            onDragStart = { _, _ -> },
+            onDragStart = { _, _, _ -> },
             onDrag = { },
             onDragEnd = { }
         )

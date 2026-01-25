@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -50,7 +51,7 @@ import com.ofekpintok.shutterfly.canvas.ui.theme.ShutterflyCanvasTheme
 fun PhotoCarousel(
     isLoading: Boolean,
     photos: List<Photo>,
-    onDragStart: (EditorDragItem, Offset) -> Unit,
+    onDragStart: (EditorDragItem, Offset, Size) -> Unit,
     onDrag: (Offset) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier
@@ -106,7 +107,7 @@ private fun CarouselError(modifier: Modifier = Modifier) {
 private fun CarouselContent(
     modifier: Modifier = Modifier,
     photos: List<Photo>,
-    onDragStart: (EditorDragItem, Offset) -> Unit,
+    onDragStart: (EditorDragItem, Offset, Size) -> Unit,
     onDrag: (Offset) -> Unit,
     onDragEnd: () -> Unit
 ) {
@@ -117,10 +118,11 @@ private fun CarouselContent(
             itemContent = { photo ->
                 DraggableSource(
                     modifier = modifier.wrapContentSize(),
-                    onDragStart = { globalOffset ->
+                    onDragStart = { globalOffset, size ->
                         onDragStart(
                             EditorDragItem.FromCarousel(photo),
-                            globalOffset
+                            globalOffset,
+                            size
                         )
                     },
                     onDrag = onDrag,
@@ -219,7 +221,7 @@ private fun PhotoCarouselLoadingPreview() {
                 .height(120.dp),
             isLoading = true,
             photos = emptyList(),
-            onDragStart = { _, _ -> },
+            onDragStart = { _, _, _ -> },
             onDrag = {},
             onDragEnd = {}
         )
@@ -236,7 +238,7 @@ private fun PhotoCarouselErrorPreview() {
                 .height(120.dp),
             isLoading = false,
             photos = emptyList(),
-            onDragStart = { _, _ -> },
+            onDragStart = { _, _, _ -> },
             onDrag = {},
             onDragEnd = {}
         )
@@ -257,7 +259,7 @@ private fun PhotoCarouselPreview() {
                 Photo(url = "url1", id = "1"),
                 Photo(url = "url2", id = "2")
             ),
-            onDragStart = { _, _ -> },
+            onDragStart = { _, _, _ -> },
             onDrag = {},
             onDragEnd = {}
         )

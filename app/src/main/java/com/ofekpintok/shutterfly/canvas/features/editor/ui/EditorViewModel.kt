@@ -64,6 +64,7 @@ class EditorViewModel(
 
     fun onEvent(event: EditorEvent) = when (event) {
         is EditorEvent.AddPhotoToCanvas -> addPhotoToCanvas(event.photo, event.position)
+        is EditorEvent.RemovePhotoFromCanvas -> removePhotoFromCanvas(event.instanceId)
         is EditorEvent.MoveCanvasPhoto -> moveCanvasPhoto(event.instanceId, event.newPosition)
     }
 
@@ -77,6 +78,11 @@ class EditorViewModel(
             )
         )
         updateCanvasPhotos { it + canvasPhoto }
+    }
+
+    private fun removePhotoFromCanvas(instanceId: String) {
+        val canvasPhoto = canvasPhotosState.value.firstOrNull { it.id == instanceId } ?: return
+        updateCanvasPhotos { it - canvasPhoto }
     }
 
     private fun moveCanvasPhoto(

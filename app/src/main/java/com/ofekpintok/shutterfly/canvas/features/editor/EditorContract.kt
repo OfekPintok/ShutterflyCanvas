@@ -9,6 +9,7 @@ import kotlinx.collections.immutable.persistentListOf
 
 sealed class EditorEvent {
     data class AddPhotoToCanvas(val photo: Photo, val position: Offset) : EditorEvent()
+    data class RemovePhotoFromCanvas(val instanceId: String) : EditorEvent()
     data class MoveCanvasPhoto(val instanceId: String, val newPosition: Offset) : EditorEvent()
 }
 

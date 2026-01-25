@@ -11,15 +11,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.toSize
 
 @Composable
 fun DraggableSource(
-    onDragStart: (Offset) -> Unit,
+    onDragStart: (Offset, Size) -> Unit,
     onDrag: (dragAmount: Offset) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier,
@@ -34,7 +36,8 @@ fun DraggableSource(
             detectDragGesturesAfterLongPress(
                 onDragStart = start,
                 onDrag = drag,
-                onDragEnd = end
+                onDragEnd = end,
+                onDragCancel = end
             )
         },
         content = content
@@ -44,7 +47,7 @@ fun DraggableSource(
 @Composable
 fun InstantDraggableSource(
     modifier: Modifier = Modifier,
-    onDragStart: (Offset) -> Unit,
+    onDragStart: (Offset, Size) -> Unit,
     onDrag: (Offset) -> Unit,
     onDragEnd: () -> Unit,
     content: @Composable (isDragging: Boolean) -> Unit
@@ -58,7 +61,8 @@ fun InstantDraggableSource(
             detectDragGestures(
                 onDragStart = start,
                 onDrag = drag,
-                onDragEnd = end
+                onDragEnd = end,
+                onDragCancel = end
             )
         },
         content = { isDragging -> content(isDragging) }
@@ -67,7 +71,7 @@ fun InstantDraggableSource(
 
 @Composable
 private fun BaseDraggableSource(
-    onDragStart: (Offset) -> Unit,
+    onDragStart: (Offset, Size) -> Unit,
     onDrag: (Offset) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier,
@@ -79,16 +83,20 @@ private fun BaseDraggableSource(
     content: @Composable BoxScope.(isDragging: Boolean) -> Unit
 ) {
     var selfGlobalPosition by remember { mutableStateOf(Offset.Zero) }
+    var selfSize by remember { mutableStateOf(Size.Zero) }
     var isDragging by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
-            .onGloballyPositioned { selfGlobalPosition = it.positionInRoot() }
+            .onGloballyPositioned { 
+                selfGlobalPosition = it.positionInRoot()
+                selfSize = it.size.toSize()
+            }
             .pointerInput(Unit) {
                 detect(
-                    {
+                    { 
                         isDragging = true
-                        onDragStart(selfGlobalPosition)
+                        onDragStart(selfGlobalPosition, selfSize)
                     },
                     { change, dragAmount ->
                         change.consume()
