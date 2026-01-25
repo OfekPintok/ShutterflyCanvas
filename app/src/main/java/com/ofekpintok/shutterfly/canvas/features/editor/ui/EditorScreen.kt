@@ -2,26 +2,43 @@ package com.ofekpintok.shutterfly.canvas.features.editor.ui
 
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ofekpintok.shutterfly.canvas.core.ui.dnd.DragOverlayContainer
+import com.ofekpintok.shutterfly.canvas.core.utils.clipBelow
+import com.ofekpintok.shutterfly.canvas.core.utils.clipBottom
+import com.ofekpintok.shutterfly.canvas.features.editor.EditorDragItem
+import com.ofekpintok.shutterfly.canvas.features.editor.EditorEvent
+import com.ofekpintok.shutterfly.canvas.features.editor.EditorUiState
 import com.ofekpintok.shutterfly.canvas.features.editor.domain.models.Photo
-import com.ofekpintok.shutterfly.canvas.features.editor.ui.components.EditorCanvas
-import com.ofekpintok.shutterfly.canvas.features.editor.ui.components.PhotoCarousel
+import com.ofekpintok.shutterfly.canvas.features.editor.ui.canvas.EditorCanvas
+import com.ofekpintok.shutterfly.canvas.features.editor.ui.carousel.PhotoCarousel
+import com.ofekpintok.shutterfly.canvas.features.editor.ui.components.GhostCanvasItem
+import com.ofekpintok.shutterfly.canvas.features.editor.ui.components.GhostPhotoItem
+import com.ofekpintok.shutterfly.canvas.features.editor.ui.config.EditorConfig.BaseCanvasPhotoWidth
 import com.ofekpintok.shutterfly.canvas.ui.theme.ShutterflyCanvasTheme
 import kotlinx.collections.immutable.persistentListOf
 import org.koin.androidx.compose.koinViewModel
@@ -32,12 +49,16 @@ fun EditorRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    EditorScreen(uiState)
+    EditorScreen(
+        uiState = uiState,
+        onEditorEvent = { viewModel.onEvent(it) }
+    )
 }
 
 @Composable
 private fun EditorScreen(
     uiState: EditorUiState,
+    onEditorEvent: (EditorEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -45,7 +66,51 @@ private fun EditorScreen(
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { padding ->
+    ) { padding -> EditorContent(onEditorEvent, padding, uiState) }
+}
+
+@Composable
+private fun EditorContent(
+    onEditorEvent: (EditorEvent) -> Unit,
+    padding: PaddingValues,
+    uiState: EditorUiState
+) {
+    var canvasBounds by remember { mutableStateOf(Rect.Zero) }
+
+    DragOverlayContainer(
+        onDrop = { dragItem, globalDropOffset ->
+            when {
+                dragItem is EditorDragItem.FromCarousel && canvasBounds.contains(globalDropOffset) -> onEditorEvent(
+                    EditorEvent.AddPhotoToCanvas(
+                        photo = dragItem.photo,
+                        position = globalDropOffset - canvasBounds.topLeft
+                    )
+                )
+
+                dragItem is EditorDragItem.FromCanvas -> onEditorEvent(
+                    EditorEvent.MoveCanvasPhoto(
+                        instanceId = dragItem.canvasPhoto.id,
+                        newPosition = globalDropOffset - canvasBounds.topLeft
+                    )
+                )
+
+                else -> Unit
+            }
+        },
+        dragOverlayContent = { dragItem, offset ->
+            when (dragItem) {
+                is EditorDragItem.FromCarousel -> GhostPhotoItem(dragItem.photo, offset)
+                is EditorDragItem.FromCanvas -> GhostCanvasItem(
+                    modifier = Modifier
+                        .width(BaseCanvasPhotoWidth)
+                        .wrapContentHeight()
+                        .clipBelow(limitY = canvasBounds.bottom),
+                    photo = dragItem.canvasPhoto,
+                    offset = offset
+                )
+            }
+        },
+    ) {
         BoxWithConstraints(
             modifier = Modifier
                 .padding(padding)
@@ -55,14 +120,27 @@ private fun EditorScreen(
 
             Column(modifier = Modifier.fillMaxSize()) {
                 EditorCanvas(
-                    modifier = Modifier.weight(1f),
-                    canvasPhotos = uiState.canvasPhotos
+                    modifier = Modifier
+                        .weight(1f)
+                        .clipBottom()
+                        .onGloballyPositioned { canvasBounds = it.boundsInRoot() },
+                    canvasPhotos = uiState.canvasPhotos,
+                    onDragStart = { item, offset -> onDragStart(item, offset) },
+                    onDrag = { onDrag(it) },
+                    onDragEnd = { onDragEnd() }
                 )
+
                 HorizontalDivider()
+
                 PhotoCarousel(
-                    modifier = Modifier.height(height = carouselHeight).fillMaxWidth(),
+                    modifier = Modifier
+                        .height(height = carouselHeight)
+                        .fillMaxWidth(),
                     isLoading = uiState.isLoading,
-                    photos = uiState.carouselPhotos
+                    photos = uiState.carouselPhotos,
+                    onDragStart = { item, offset -> onDragStart(item, offset) },
+                    onDrag = { onDrag(it) },
+                    onDragEnd = { onDragEnd() }
                 )
             }
         }
@@ -88,7 +166,8 @@ private fun EditorScreenPreview() {
                     Photo(url = "url3", id = "3"),
                 ),
                 canvasPhotos = persistentListOf()
-            )
+            ),
+            onEditorEvent = {}
         )
     }
 }

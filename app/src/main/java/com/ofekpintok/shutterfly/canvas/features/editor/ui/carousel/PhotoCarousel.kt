@@ -1,5 +1,6 @@
-package com.ofekpintok.shutterfly.canvas.features.editor.ui.components
+package com.ofekpintok.shutterfly.canvas.features.editor.ui.carousel
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -23,10 +25,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -35,7 +40,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.ofekpintok.shutterfly.canvas.core.ui.dnd.DraggableSource
 import com.ofekpintok.shutterfly.canvas.core.utils.rememberShimmerBrush
+import com.ofekpintok.shutterfly.canvas.features.editor.EditorDragItem
 import com.ofekpintok.shutterfly.canvas.features.editor.domain.models.Photo
 import com.ofekpintok.shutterfly.canvas.ui.theme.ShutterflyCanvasTheme
 
@@ -43,7 +50,10 @@ import com.ofekpintok.shutterfly.canvas.ui.theme.ShutterflyCanvasTheme
 fun PhotoCarousel(
     isLoading: Boolean,
     photos: List<Photo>,
-    modifier: Modifier = Modifier,
+    onDragStart: (EditorDragItem, Offset) -> Unit,
+    onDrag: (Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier,
@@ -52,7 +62,12 @@ fun PhotoCarousel(
         when {
             isLoading -> CarouselLoader()
             photos.isEmpty() -> CarouselError()
-            else -> CarouselContent(photos = photos)
+            else -> CarouselContent(
+                photos = photos,
+                onDragStart = onDragStart,
+                onDrag = onDrag,
+                onDragEnd = onDragEnd
+            )
         }
     }
 }
@@ -90,16 +105,47 @@ private fun CarouselError(modifier: Modifier = Modifier) {
 @Composable
 private fun CarouselContent(
     modifier: Modifier = Modifier,
-    photos: List<Photo>
+    photos: List<Photo>,
+    onDragStart: (EditorDragItem, Offset) -> Unit,
+    onDrag: (Offset) -> Unit,
+    onDragEnd: () -> Unit
 ) {
     HorizontalCarousel(modifier = modifier) {
         items(
             items = photos,
             key = { photo -> photo.id },
             itemContent = { photo ->
-                CarouselItemContainer {
-                    CarouselItem(photo = photo)
-                }
+                DraggableSource(
+                    modifier = modifier.wrapContentSize(),
+                    onDragStart = { globalOffset ->
+                        onDragStart(
+                            EditorDragItem.FromCarousel(photo),
+                            globalOffset
+                        )
+                    },
+                    onDrag = onDrag,
+                    onDragEnd = onDragEnd,
+                    content = { isDragging ->
+                        val alpha by animateFloatAsState(
+                            targetValue = if (isDragging) 0.3f else 1f,
+                            label = "drag_alpha"
+                        )
+
+                        val scale by animateFloatAsState(
+                            targetValue = if (isDragging) 0.9f else 1f,
+                            label = "drag_scale"
+                        )
+
+                        CarouselItem(
+                            photo = photo,
+                            modifier = Modifier.graphicsLayer {
+                                this.alpha = alpha
+                                this.scaleX = scale
+                                this.scaleY = scale
+                            }
+                        )
+                    }
+                )
             }
         )
     }
@@ -129,6 +175,7 @@ private fun CarouselItemContainer(
             .fillMaxHeight()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
         content = content
     )
@@ -145,17 +192,21 @@ private fun ShimmerItem(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun CarouselItem(photo: Photo, modifier: Modifier = Modifier) {
-    AsyncImage(
-        modifier = modifier.fillMaxSize(),
-        model = ImageRequest.Builder(LocalContext.current)
-            .data(photo.url)
-            .crossfade(true)
-            .build(),
-        contentDescription = "Select photo",
-        error = rememberVectorPainter(Icons.Default.BrokenImage),
-        contentScale = ContentScale.Crop
-    )
+private fun CarouselItem(
+    photo: Photo,
+    modifier: Modifier = Modifier
+) {
+    CarouselItemContainer(modifier = modifier) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(photo.url)
+                .crossfade(true)
+                .build(),
+            contentDescription = "Select photo",
+            error = rememberVectorPainter(Icons.Default.BrokenImage),
+            contentScale = ContentScale.Crop
+        )
+    }
 }
 
 @Preview(showBackground = true)
@@ -167,7 +218,10 @@ private fun PhotoCarouselLoadingPreview() {
                 .fillMaxWidth()
                 .height(120.dp),
             isLoading = true,
-            photos = emptyList()
+            photos = emptyList(),
+            onDragStart = { _, _ -> },
+            onDrag = {},
+            onDragEnd = {}
         )
     }
 }
@@ -181,7 +235,10 @@ private fun PhotoCarouselErrorPreview() {
                 .fillMaxWidth()
                 .height(120.dp),
             isLoading = false,
-            photos = emptyList()
+            photos = emptyList(),
+            onDragStart = { _, _ -> },
+            onDrag = {},
+            onDragEnd = {}
         )
     }
 }
@@ -199,7 +256,10 @@ private fun PhotoCarouselPreview() {
             photos = listOf(
                 Photo(url = "url1", id = "1"),
                 Photo(url = "url2", id = "2")
-            )
+            ),
+            onDragStart = { _, _ -> },
+            onDrag = {},
+            onDragEnd = {}
         )
     }
 }

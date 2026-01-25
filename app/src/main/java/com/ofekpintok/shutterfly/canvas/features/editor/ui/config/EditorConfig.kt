@@ -1,4 +1,6 @@
-package com.ofekpintok.shutterfly.canvas.features.editor
+package com.ofekpintok.shutterfly.canvas.features.editor.ui.config
+
+import androidx.compose.ui.unit.dp
 
 object EditorConfig {
 
@@ -19,4 +21,12 @@ object EditorConfig {
      */
     val SIMULATED_LATENCY_MS: Long
         get() = 1_000L
+
+    /**
+     * Configuration: The base width in pixels used for calculating photo dimensions on the canvas.
+     *
+     * This value serves as the reference point for scaling and positioning elements
+     * within the editor's workspace.
+     */
+    val BaseCanvasPhotoWidth = 200.dp
 }
