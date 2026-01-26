@@ -34,7 +34,7 @@ Implemented a custom `DragOverlayContainer` acting as a mutex to manage gesture 
 
 ## 📦 How to Install
 
-Go to the [Releases Section](INSERT_YOUR_REPO_LINK/releases) to download the latest APK file.
+Go to the [Releases Sect/releases](https://github.com/OfekPintok/ShutterflyCanvas/releases)) to download the latest APK file.
 
 ---
 *Built as a home assignment task.*
