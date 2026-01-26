@@ -37,7 +37,7 @@ fun EditorCanvas(
     canvasBounds: Rect,
     modifier: Modifier = Modifier,
     canvasPhotos: PersistentList<CanvasPhoto>,
-    onDragStart: (EditorDragItem, Offset, Size, Float, Float) -> Unit,
+    onDragStart: (EditorDragItem, Offset, Size, Float, Float) -> Boolean,
     onDrag: (DragEventDelta) -> Unit,
     onDragEnd: () -> Unit
 ) {
@@ -86,7 +86,7 @@ fun EditorCanvas(
 private fun CanvasContent(
     canvasBounds: Rect,
     canvasPhotos: PersistentList<CanvasPhoto>,
-    onDragStart: (EditorDragItem, Offset, Size, Float, Float) -> Unit,
+    onDragStart: (EditorDragItem, Offset, Size, Float, Float) -> Boolean,
     onDrag: (DragEventDelta) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier
@@ -123,7 +123,7 @@ private fun CanvasPhotoItem(
     maxScreenDimensionPx: Int,
     baseWidthInt: Int,
     canvasBounds: Rect,
-    onDragStart: (EditorDragItem, Offset, Size, Float, Float) -> Unit,
+    onDragStart: (EditorDragItem, Offset, Size, Float, Float) -> Boolean,
     onDrag: (DragEventDelta) -> Unit,
     onDragEnd: () -> Unit
 ) {
@@ -178,7 +178,7 @@ private fun EmptyEditorCanvasPreview() {
         EditorCanvas(
             Rect.Zero,
             canvasPhotos = persistentListOf(),
-            onDragStart = { _, _, _, _, _ -> },
+            onDragStart = { _, _, _, _, _ -> true },
             onDrag = { },
             onDragEnd = { }
         )
@@ -214,7 +214,7 @@ private fun PopulatedEditorCanvasPreview() {
                     attributes = CanvasPhotoAttributes(x = 150f, y = 500f, rotation = 0f)
                 )
             ),
-            onDragStart = { _, _, _, _, _ -> },
+            onDragStart = { _, _, _, _, _ -> true },
             onDrag = { },
             onDragEnd = { }
         )

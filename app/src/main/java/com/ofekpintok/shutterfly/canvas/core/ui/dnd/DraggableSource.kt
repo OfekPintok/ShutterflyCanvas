@@ -75,7 +75,7 @@ fun DraggableSource(
 @Composable
 fun TransformableSource(
     modifier: Modifier = Modifier,
-    onDragStart: (Offset, Size) -> Unit,
+    onDragStart: (Offset, Size) -> Boolean,
     onDrag: (DragEventDelta) -> Unit,
     onDragEnd: () -> Unit,
     graphicLayerScope: GraphicsLayerScope.() -> Unit = {},
@@ -87,7 +87,7 @@ fun TransformableSource(
 
     var selfGlobalPosition by remember { mutableStateOf(Offset.Zero) }
     var selfSize by remember { mutableStateOf(Size.Zero) }
-    var isDragging by remember { mutableStateOf(false) }
+    var isGestureOwner by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -98,20 +98,21 @@ fun TransformableSource(
             .pointerInput(Unit) {
                 detectUnifiedGestures(
                     onGestureStart = {
-                        isDragging = true
-                        currentOnDragStart(selfGlobalPosition, selfSize)
+                        isGestureOwner = currentOnDragStart(selfGlobalPosition, selfSize)
                     },
                     onGesture = { pan, zoom, rotation ->
-                        currentOnDrag(DragEventDelta(pan, zoom, rotation))
+                        if (isGestureOwner) currentOnDrag(DragEventDelta(pan, zoom, rotation))
                     },
                     onGestureEnd = {
-                        isDragging = false
-                        currentOnDragEnd()
+                        if (isGestureOwner) {
+                            currentOnDragEnd()
+                            isGestureOwner = false
+                        }
                     }
                 )
             }
             .graphicsLayer(graphicLayerScope),
-        content = { content(isDragging) }
+        content = { content(isGestureOwner) }
     )
 }
 

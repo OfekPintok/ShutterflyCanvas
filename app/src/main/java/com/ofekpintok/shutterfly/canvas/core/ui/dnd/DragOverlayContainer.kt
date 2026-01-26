@@ -22,7 +22,7 @@ interface DragScope<T> {
         size: Size,
         initialScale: Float = 1f,
         initialRotation: Float = 0f
-    )
+    ): Boolean
 
     fun onDrag(delta: DragEventDelta)
     fun onDragEnd()
@@ -48,7 +48,11 @@ fun <T> DragOverlayContainer(
                 size: Size,
                 initialScale: Float,
                 initialRotation: Float
-            ) {
+            ): Boolean {
+                if (dragState.isDragging) {
+                    return false
+                }
+
                 Log.d(TAG, "onDragStart: data=$data, offset=$offset")
                 dragState = DragState(
                     isDragging = true,
@@ -58,6 +62,8 @@ fun <T> DragOverlayContainer(
                     scale = initialScale,
                     rotation = initialRotation
                 )
+
+                return true
             }
 
             override fun onDrag(delta: DragEventDelta) {
