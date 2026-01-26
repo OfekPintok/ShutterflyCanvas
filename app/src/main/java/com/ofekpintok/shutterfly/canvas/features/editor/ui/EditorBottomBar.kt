@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ofekpintok.shutterfly.canvas.core.ui.dnd.DragState
+import com.ofekpintok.shutterfly.canvas.core.ui.dnd.models.DragEventDelta
 import com.ofekpintok.shutterfly.canvas.features.editor.EditorDragItem
 import com.ofekpintok.shutterfly.canvas.features.editor.domain.models.Photo
 import com.ofekpintok.shutterfly.canvas.features.editor.ui.carousel.PhotoCarousel
@@ -47,7 +48,7 @@ fun EditorBottomBar(
     isHoveringTrash: Boolean,
     onTrashBoundsChange: (Rect) -> Unit,
     onDragStart: (EditorDragItem, Offset, Size) -> Unit,
-    onDrag: (Offset) -> Unit,
+    onDrag: (DragEventDelta) -> Unit,
     onDragEnd: () -> Unit
 ) {
     Box(

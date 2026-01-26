@@ -8,8 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -21,9 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -40,7 +41,6 @@ import com.ofekpintok.shutterfly.canvas.features.editor.domain.models.Photo
 import com.ofekpintok.shutterfly.canvas.features.editor.ui.canvas.EditorCanvas
 import com.ofekpintok.shutterfly.canvas.features.editor.ui.components.GhostCanvasItem
 import com.ofekpintok.shutterfly.canvas.features.editor.ui.components.GhostPhotoItem
-import com.ofekpintok.shutterfly.canvas.features.editor.ui.config.EditorConfig.BaseCanvasPhotoWidth
 import com.ofekpintok.shutterfly.canvas.ui.theme.ShutterflyCanvasTheme
 import kotlinx.collections.immutable.persistentListOf
 import org.koin.androidx.compose.koinViewModel
@@ -53,7 +53,7 @@ fun EditorRoute(
 
     EditorScreen(
         uiState = uiState,
-        onEditorEvent = { viewModel.onEvent(it) }
+        onEditorEvent = viewModel::onEvent
     )
 }
 
@@ -79,19 +79,18 @@ private fun EditorContent(
 ) {
     var canvasBounds by remember { mutableStateOf(Rect.Zero) }
     var trashBounds by remember { mutableStateOf(Rect.Zero) }
-
     val haptic = LocalHapticFeedback.current
 
-    DragOverlayContainer(
-        onDrop = { dragItem, globalDropOffset, size->
-            val droppedItemRect = Rect(offset = globalDropOffset, size = size)
+    DragOverlayContainer<EditorDragItem>(
+        onDrop = { dragItem, dragState ->
+            val droppedItemRect = Rect(offset = dragState.currentPosition, size = dragState.size)
 
             when {
-                dragItem is EditorDragItem.FromCarousel && canvasBounds.contains(globalDropOffset) -> {
+                dragItem is EditorDragItem.FromCarousel && canvasBounds.contains(dragState.currentPosition) -> {
                     onEditorEvent(
                         EditorEvent.AddPhotoToCanvas(
                             photo = dragItem.photo,
-                            position = globalDropOffset - canvasBounds.topLeft
+                            position = dragState.currentPosition - canvasBounds.topLeft
                         )
                     )
                 }
@@ -102,24 +101,36 @@ private fun EditorContent(
                 }
 
                 dragItem is EditorDragItem.FromCanvas -> onEditorEvent(
-                    EditorEvent.MoveCanvasPhoto(
+                    EditorEvent.ManipulateCanvasPhoto(
                         instanceId = dragItem.canvasPhoto.id,
-                        newPosition = globalDropOffset - canvasBounds.topLeft
+                        newPosition = dragState.currentPosition - canvasBounds.topLeft,
+                        scale = dragState.scale,
+                        rotation = dragState.rotation
                     )
                 )
 
                 else -> Unit
             }
         },
-        dragOverlayContent = { dragItem, offset ->
+        dragOverlayContent = { dragItem, dragState ->
             when (dragItem) {
-                is EditorDragItem.FromCarousel -> GhostPhotoItem(dragItem.photo, offset)
+                is EditorDragItem.FromCarousel -> GhostPhotoItem(
+                    dragItem.photo,
+                    dragState.currentPosition
+                )
+
                 is EditorDragItem.FromCanvas -> GhostCanvasItem(
                     modifier = Modifier
-                        .width(BaseCanvasPhotoWidth)
-                        .wrapContentHeight(),
-                    photo = dragItem.canvasPhoto,
-                    offset = offset
+                        .size(with(LocalDensity.current) { dragState.size.toDpSize() })
+                        .graphicsLayer {
+                            translationX = dragState.currentPosition.x
+                            translationY = dragState.currentPosition.y
+                            scaleX = dragState.scale
+                            scaleY = dragState.scale
+                            rotationZ = dragState.rotation
+                            alpha = 0.9f
+                        },
+                    photo = dragItem.canvasPhoto
                 )
             }
         },
@@ -146,13 +157,22 @@ private fun EditorContent(
                         .clipBottom()
                 ) {
                     EditorCanvas(
+                        canvasBounds = canvasBounds,
                         modifier = Modifier.onGloballyPositioned {
                             canvasBounds = it.boundsInRoot()
                         },
                         canvasPhotos = uiState.canvasPhotos,
-                        onDragStart = { item, offset, size -> onDragStart(item, offset, size) },
-                        onDrag = { onDrag(it) },
-                        onDragEnd = { onDragEnd() }
+                        onDragStart = { item, offset, size, initialScale, initialRotation ->
+                            this@DragOverlayContainer.onDragStart(
+                                data = item,
+                                offset = offset,
+                                size = size,
+                                initialScale = initialScale,
+                                initialRotation = initialRotation
+                            )
+                        },
+                        onDrag = { this@DragOverlayContainer.onDrag(it) },
+                        onDragEnd = { this@DragOverlayContainer.onDragEnd() }
                     )
                 }
 
@@ -169,10 +189,16 @@ private fun EditorContent(
                     onTrashBoundsChange = { trashBounds = it },
                     onDragStart = { item, offset, size ->
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onDragStart(item, offset, size)
+                        this@DragOverlayContainer.onDragStart(
+                            data = item,
+                            offset = offset,
+                            size = size,
+                            initialScale = 1f,
+                            initialRotation = 0f
+                        )
                     },
-                    onDrag = { onDrag(it) },
-                    onDragEnd = { onDragEnd() }
+                    onDrag = { this@DragOverlayContainer.onDrag(it) },
+                    onDragEnd = { this@DragOverlayContainer.onDragEnd() }
                 )
             }
         }

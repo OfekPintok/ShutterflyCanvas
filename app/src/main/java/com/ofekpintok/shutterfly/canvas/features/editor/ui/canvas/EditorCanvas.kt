@@ -1,53 +1,44 @@
 package com.ofekpintok.shutterfly.canvas.features.editor.ui.canvas
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ofekpintok.shutterfly.canvas.R
-import com.ofekpintok.shutterfly.canvas.core.ui.dnd.InstantDraggableSource
+import com.ofekpintok.shutterfly.canvas.core.ui.dnd.TransformableSource
+import com.ofekpintok.shutterfly.canvas.core.ui.dnd.models.DragEventDelta
+import com.ofekpintok.shutterfly.canvas.core.utils.dpToPx
+import com.ofekpintok.shutterfly.canvas.core.utils.pxToDp
 import com.ofekpintok.shutterfly.canvas.features.editor.EditorDragItem
 import com.ofekpintok.shutterfly.canvas.features.editor.domain.models.CanvasPhoto
 import com.ofekpintok.shutterfly.canvas.features.editor.domain.models.CanvasPhotoAttributes
-import com.ofekpintok.shutterfly.canvas.features.editor.ui.config.EditorConfig.BaseCanvasPhotoWidth
+import com.ofekpintok.shutterfly.canvas.features.editor.ui.config.EditorConfig.BaseCanvasPhotoWidthDp
+import com.ofekpintok.shutterfly.canvas.features.editor.ui.utils.editorPositioning
 import com.ofekpintok.shutterfly.canvas.ui.theme.ShutterflyCanvasTheme
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
 fun EditorCanvas(
+    canvasBounds: Rect,
     modifier: Modifier = Modifier,
     canvasPhotos: PersistentList<CanvasPhoto>,
-    onDragStart: (EditorDragItem, Offset, Size) -> Unit,
-    onDrag: (Offset) -> Unit,
+    onDragStart: (EditorDragItem, Offset, Size, Float, Float) -> Unit,
+    onDrag: (DragEventDelta) -> Unit,
     onDragEnd: () -> Unit
 ) {
     val backgroundColor = MaterialTheme.colorScheme.background
@@ -81,6 +72,7 @@ fun EditorCanvas(
             },
         content = {
             CanvasContent(
+                canvasBounds = canvasBounds,
                 canvasPhotos = canvasPhotos,
                 onDragStart = onDragStart,
                 onDrag = onDrag,
@@ -92,83 +84,91 @@ fun EditorCanvas(
 
 @Composable
 private fun CanvasContent(
+    canvasBounds: Rect,
     canvasPhotos: PersistentList<CanvasPhoto>,
-    onDragStart: (EditorDragItem, Offset, Size) -> Unit,
-    onDrag: (Offset) -> Unit,
+    onDragStart: (EditorDragItem, Offset, Size, Float, Float) -> Unit,
+    onDrag: (DragEventDelta) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
+        val baseWidthPx = BaseCanvasPhotoWidthDp.dpToPx
+        val baseWidthInt = baseWidthPx.roundToInt()
+
+        val maxScreenDimensionPx = with(LocalConfiguration.current) {
+            maxOf(screenWidthDp, screenHeightDp).dp.dpToPx.roundToInt()
+        }
+
         canvasPhotos.forEach { photo ->
             key(photo.id) {
-                InstantDraggableSource(
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                photo.attributes.x.roundToInt(),
-                                photo.attributes.y.roundToInt()
-                            )
-                        }
-                        .graphicsLayer {
-                            rotationZ = photo.attributes.rotation
-                            scaleX = photo.attributes.scale
-                            scaleY = photo.attributes.scale
-                        }
-                        .width(BaseCanvasPhotoWidth)
-                        .wrapContentHeight(),
-                    onDragStart = { offset, size ->
-                        onDragStart(
-                            EditorDragItem.FromCanvas(photo),
-                            offset,
-                            size
-                        )
-                    },
+                CanvasPhotoItem(
+                    baseWidthPx = baseWidthPx,
+                    photo = photo,
+                    maxScreenDimensionPx = maxScreenDimensionPx,
+                    baseWidthInt = baseWidthInt,
+                    canvasBounds = canvasBounds,
+                    onDragStart = onDragStart,
                     onDrag = onDrag,
-                    onDragEnd = onDragEnd,
-                ) { isDragging ->
-                    CanvasItem(
-                        photo = photo,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .alpha(if (isDragging) 0f else 1f)
-                    )
-                }
+                    onDragEnd = onDragEnd
+                )
             }
         }
     }
 }
 
 @Composable
-private fun CanvasItem(photo: CanvasPhoto, modifier: Modifier = Modifier) {
-    var hasAnimated by rememberSaveable { mutableStateOf(false) }
+private fun CanvasPhotoItem(
+    baseWidthPx: Float,
+    photo: CanvasPhoto,
+    maxScreenDimensionPx: Int,
+    baseWidthInt: Int,
+    canvasBounds: Rect,
+    onDragStart: (EditorDragItem, Offset, Size, Float, Float) -> Unit,
+    onDrag: (DragEventDelta) -> Unit,
+    onDragEnd: () -> Unit
+) {
+    val realVisualSizePx = baseWidthPx * photo.attributes.scale
+    val touchSizePx = realVisualSizePx
+        .coerceAtMost(maxScreenDimensionPx.toFloat())
+        .roundToInt()
 
-    val scaleAnim = remember { Animatable(if (hasAnimated) 1f else 0.5f) }
-    val alphaAnim = remember { Animatable(if (hasAnimated) 1f else 0f) }
+    TransformableSource(
+        modifier = Modifier.editorPositioning(
+            x = photo.attributes.x,
+            y = photo.attributes.y,
+            baseSize = baseWidthInt,
+            touchSize = touchSizePx
+        ),
+        graphicLayerScope = {
+            rotationZ = photo.attributes.rotation
+            scaleX = 1f
+            scaleY = 1f
+        },
+        onDragStart = { _, _ ->
+            val absoluteImagePosition = canvasBounds.topLeft + Offset(
+                photo.attributes.x,
+                photo.attributes.y
+            )
 
-    LaunchedEffect(Unit) {
-        if (!hasAnimated) {
-            launch {
-                scaleAnim.animateTo(
-                    targetValue = 1f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                )
-            }
-            launch {
-                alphaAnim.animateTo(1f, tween(300))
-            }
-            hasAnimated = true
-        }
+            onDragStart(
+                EditorDragItem.FromCanvas(photo),
+                absoluteImagePosition,
+                Size(baseWidthPx, baseWidthPx),
+                photo.attributes.scale,
+                photo.attributes.rotation
+            )
+        },
+        onDrag = { onDrag(it) },
+        onDragEnd = onDragEnd,
+    ) { isDragging ->
+        CanvasPhotoRenderer(
+            photo = photo,
+            modifier = Modifier
+                .requiredSize(realVisualSizePx.pxToDp)
+                .alpha(if (isDragging) 0f else 1f),
+            animateEntry = true
+        )
     }
-
-    CanvasPhotoRenderer(
-        photo = photo,
-        modifier = modifier,
-        scaleMultiplier = scaleAnim.value,
-        alpha = alphaAnim.value
-    )
 }
 
 @Preview(showBackground = true)
@@ -176,8 +176,9 @@ private fun CanvasItem(photo: CanvasPhoto, modifier: Modifier = Modifier) {
 private fun EmptyEditorCanvasPreview() {
     ShutterflyCanvasTheme {
         EditorCanvas(
+            Rect.Zero,
             canvasPhotos = persistentListOf(),
-            onDragStart = { _, _, _ -> },
+            onDragStart = { _, _, _, _, _ -> },
             onDrag = { },
             onDragEnd = { }
         )
@@ -190,6 +191,7 @@ private fun PopulatedEditorCanvasPreview() {
     val packageName = LocalContext.current.packageName
     ShutterflyCanvasTheme {
         EditorCanvas(
+            Rect.Zero,
             canvasPhotos = persistentListOf(
                 CanvasPhoto(
                     sourceId = "1",
@@ -212,7 +214,7 @@ private fun PopulatedEditorCanvasPreview() {
                     attributes = CanvasPhotoAttributes(x = 150f, y = 500f, rotation = 0f)
                 )
             ),
-            onDragStart = { _, _, _ -> },
+            onDragStart = { _, _, _, _, _ -> },
             onDrag = { },
             onDragEnd = { }
         )

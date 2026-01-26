@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.ofekpintok.shutterfly.canvas.core.ui.dnd.DraggableSource
+import com.ofekpintok.shutterfly.canvas.core.ui.dnd.models.DragEventDelta
 import com.ofekpintok.shutterfly.canvas.core.utils.rememberShimmerBrush
 import com.ofekpintok.shutterfly.canvas.features.editor.EditorDragItem
 import com.ofekpintok.shutterfly.canvas.features.editor.domain.models.Photo
@@ -52,7 +53,7 @@ fun PhotoCarousel(
     isLoading: Boolean,
     photos: List<Photo>,
     onDragStart: (EditorDragItem, Offset, Size) -> Unit,
-    onDrag: (Offset) -> Unit,
+    onDrag: (DragEventDelta) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -108,7 +109,7 @@ private fun CarouselContent(
     modifier: Modifier = Modifier,
     photos: List<Photo>,
     onDragStart: (EditorDragItem, Offset, Size) -> Unit,
-    onDrag: (Offset) -> Unit,
+    onDrag: (DragEventDelta) -> Unit,
     onDragEnd: () -> Unit
 ) {
     HorizontalCarousel(modifier = modifier) {

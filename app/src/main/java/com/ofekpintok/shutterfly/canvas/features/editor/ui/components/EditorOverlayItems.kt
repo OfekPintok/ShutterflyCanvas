@@ -45,16 +45,9 @@ fun GhostPhotoItem(photo: Photo, offset: Offset, modifier: Modifier = Modifier) 
 @Composable
 fun GhostCanvasItem(
     photo: CanvasPhoto,
-    offset: Offset,
     modifier: Modifier = Modifier
-) {
-    CanvasPhotoRenderer(
-        photo = photo,
-        modifier = modifier.offset {
-            IntOffset(
-                offset.x.roundToInt(),
-                offset.y.roundToInt()
-            )
-        }
-    )
-}
+) = CanvasPhotoRenderer(
+    photo = photo,
+    modifier = modifier,
+    animateEntry = false
+)

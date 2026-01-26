@@ -7,5 +7,7 @@ data class DragState<T>(
     val isDragging: Boolean = false,
     val data: T? = null,
     val currentPosition: Offset = Offset.Zero,
-    val size: Size = Size.Zero
+    val size: Size = Size.Zero,
+    val scale: Float = 1f,
+    val rotation: Float = 0f,
 )

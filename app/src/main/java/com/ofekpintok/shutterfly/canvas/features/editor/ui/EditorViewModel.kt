@@ -1,7 +1,6 @@
 package com.ofekpintok.shutterfly.canvas.features.editor.ui
 
 import android.util.Log
-import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -63,38 +62,37 @@ class EditorViewModel(
     )
 
     fun onEvent(event: EditorEvent) = when (event) {
-        is EditorEvent.AddPhotoToCanvas -> addPhotoToCanvas(event.photo, event.position)
-        is EditorEvent.RemovePhotoFromCanvas -> removePhotoFromCanvas(event.instanceId)
-        is EditorEvent.MoveCanvasPhoto -> moveCanvasPhoto(event.instanceId, event.newPosition)
+        is EditorEvent.AddPhotoToCanvas -> addPhotoToCanvas(event)
+        is EditorEvent.RemovePhotoFromCanvas -> removePhotoFromCanvas(event)
+        is EditorEvent.ManipulateCanvasPhoto -> manipulateCanvasPhoto(event)
     }
 
-    private fun addPhotoToCanvas(photo: Photo, position: Offset) {
+    private fun addPhotoToCanvas(event: EditorEvent.AddPhotoToCanvas) {
         val canvasPhoto = CanvasPhoto(
-            sourceId = photo.id,
-            url = photo.url,
+            sourceId = event.photo.id,
+            url = event.photo.url,
             attributes = CanvasPhotoAttributes(
-                x = position.x,
-                y = position.y
+                x = event.position.x,
+                y = event.position.y
             )
         )
         updateCanvasPhotos { it + canvasPhoto }
     }
 
-    private fun removePhotoFromCanvas(instanceId: String) {
-        val canvasPhoto = canvasPhotosState.value.firstOrNull { it.id == instanceId } ?: return
+    private fun removePhotoFromCanvas(event: EditorEvent.RemovePhotoFromCanvas) {
+        val canvasPhoto = canvasPhotosState.value.firstOrNull { it.id == event.instanceId } ?: return
         updateCanvasPhotos { it - canvasPhoto }
     }
 
-    private fun moveCanvasPhoto(
-        instanceId: String,
-        newPosition: Offset
-    ) {
+    private fun manipulateCanvasPhoto(event: EditorEvent.ManipulateCanvasPhoto) {
         updateCanvasPhotos { photos ->
-            val photoToMove = photos.find { it.id == instanceId } ?: return@updateCanvasPhotos photos
+            val photoToMove = photos.find { it.id == event.instanceId } ?: return@updateCanvasPhotos photos
             val updatedPhoto = photoToMove.copy(
                 attributes = photoToMove.attributes.copy(
-                    x = newPosition.x,
-                    y = newPosition.y
+                    x = event.newPosition.x,
+                    y = event.newPosition.y,
+                    scale = event.scale,
+                    rotation = event.rotation
                 )
             )
 

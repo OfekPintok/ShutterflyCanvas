@@ -28,5 +28,5 @@ object EditorConfig {
      * This value serves as the reference point for scaling and positioning elements
      * within the editor's workspace.
      */
-    val BaseCanvasPhotoWidth = 200.dp
+    val BaseCanvasPhotoWidthDp = 200.dp
 }
